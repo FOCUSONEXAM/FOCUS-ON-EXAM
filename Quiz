@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Exam Quiz - Demo</title>
+<style>
+  :root{--bg:#f7f8fb;--card:#fff;--accent:#0b5ed7;--muted:#666}
+  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Noto Sans",sans-serif;background:var(--bg);color:#111}
+  .wrap{max-width:900px;margin:28px auto;padding:18px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:1.25rem;margin:0}
+  .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(20,20,30,0.06)}
+  .meta{color:var(--muted);font-size:0.9rem}
+  .quiz-area{margin-top:14px}
+  .question{font-size:1.05rem;margin-bottom:12px}
+  .options{display:grid;gap:10px}
+  .opt{padding:12px;border-radius:10px;border:1px solid #e6e9ef;cursor:pointer;user-select:none}
+  .opt:focus{outline:2px solid rgba(11,94,215,0.2)}
+  .opt.selected{border-color:var(--accent);box-shadow:0 4px 12px rgba(11,94,215,0.08);background:#f0f6ff}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:14px}
+  button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid #d9e4ff}
+  .progress{height:10px;background:#e9eefc;border-radius:999px;overflow:hidden}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#3ea0ff);width:0%}
+  .timer{font-weight:600;color:var(--muted)}
+  .result{margin-top:16px}
+  .small{font-size:0.9rem;color:var(--muted)}
+  .footer{margin-top:18px;text-align:center;color:var(--muted);font-size:0.9rem}
+  @media (max-width:600px){
+    .controls{flex-direction:column;align-items:stretch}
+    header{flex-direction:column;align-items:flex-start;gap:8px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Exam Quiz — Demo</h1>
+        <div class="meta small">Simple, free, mobile-friendly quiz (client-side)</div>
+      </div>
+      <div class="small timer" id="timer">Time: --:--</div>
+    </header>
+
+    <main class="card">
+      <div class="quiz-area" id="quizArea">
+        <div class="question" id="qText">Loading quiz…</div>
+        <div class="options" id="opts"></div>
+
+        <div class="controls">
+          <div style="flex:1">
+            <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+            <div class="small" id="qIndex">Question 0 / 0</div>
+          </div>
+          <div style="min-width:200px;display:flex;gap:8px;justify-content:flex-end">
+            <button class="ghost" id="prevBtn" aria-label="Previous">Previous</button>
+            <button id="nextBtn" aria-label="Next">Next</button>
+          </div>
+        </div>
+
+        <div class="result" id="result" aria-live="polite"></div>
+      </div>
+
+      <div class="footer">Data saved locally. To add quizzes: edit the `quizData` array inside the file. — Free demo</div>
+    </main>
+  </div>
+
+<script>
+/* ========== SAMPLE QUIZ DATA (Hindi) ========== 
+   Add/edit quizzes here. Format:
+   {id, title, timeLimitSec (optional), questions: [{q, choices:[..], answer: index(0-based), explain (optional)}]}
+*/
+const quizData = {
+  id: "demo-hindi",
+  title: " सामान्य ज्ञान - नमूना परीक्षा ",
+  timeLimitSec: 10 * 60, // 10 minutes (set null for no timer)
+  questions: [
+    { q:"भारत की राजधानी कौन सी है?", choices:["मुंबई","चेन्नई","नई दिल्ली","कोलकाता"], answer:2, explain:"नई दिल्ली भारत की राष्ट्रीय राजधानी है." },
+    { q:"ताजमहल किस शहर में है?", choices:["आगरा","जैपुर","लखनऊ","वाराणसी"], answer:0, explain:"ताजमहल आगरा (उत्तर प्रदेश) में स्थित है." },
+    { q:"सूर्य किस प्रकार का तारा है?", choices:["न्यूट्रॉन तारा","लाल विशाल","पीला पिंड (G-type)","ब्लैक होल"], answer:2, explain:"सूर्य एक G-type मुख्य अनुक्रम तारा (पीला-पिला) है." },
+    { q:"भारत का सबसे लंबा नदी कौन सा है?", choices:["गंगा","यमुना","गोदावरी","नर्मदा"], answer:0 },
+    { q:"भारत के पहले प्रधानमंत्री कौन थे?", choices:["इंदिरा गांधी","महात्मा गाँधी","जवाहरलाल नेहरू","लाल बहादुर शास्त्री"], answer:2 },
+    { q:"पृथ्वी पर सबसे अधिक मात्रा में कौन सा गैस है?", choices:["ऑक्सीजन","नाइट्रोजन","कार्बन डाइऑक्साइड","हेलियम"], answer:1 },
+    { q:"कम्प्यूटिंग में 'CPU' का पूरा नाम क्या है?", choices:["Central Processing Unit","Central Performance Unit","Computer Process Unit","Control Processing Unit"], answer:0 },
+    { q:"भोजन में विटामिन-C किसमें अधिक होता है?", choices:["दूध","नारंगी","चावल","आलू"], answer:1 },
+    { q:"हिन्दी भाषा किस लिपि में लिखी जाती है?", choices:["देवनागरी","अरबी","लैटिन","गुरुमुखी"], answer:0 },
+    { q:"भारत में 'गणतंत्र दिवस' कब मनाया जाता है?", choices:["15 अगस्त","26 जनवरी","2 अक्टूबर","14 नवंबर"], answer:1, explain:"26 जनवरी को भारत का संविधान लागू हुआ था (1950)." }
+  ]
+};
+
+/* ========== App State ========== */
+let state = {
+  quiz: quizData,
+  idx: 0,
+  answers: JSON.parse(localStorage.getItem('quiz_answers_'+quizData.id) || '[]'),
+  startAt: localStorage.getItem('quiz_start_'+quizData.id) || null,
+  timeLeft: quizData.timeLimitSec || null,
+  timerId: null
+};
+
+/* ========== Helpers ========== */
+const qText = document.getElementById('qText');
+const opts = document.getElementById('opts');
+const qIndex = document.getElementById('qIndex');
+const prog = document.getElementById('prog');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const result = document.getElementById('result');
+const timerEl = document.getElementById('timer');
+
+function saveState(){
+  localStorage.setItem('quiz_answers_'+state.quiz.id, JSON.stringify(state.answers));
+  if(state.startAt) localStorage.setItem('quiz_start_'+state.quiz.id, state.startAt);
+}
+
+/* ========== Render ========== */
+function render(){
+  const q = state.quiz.questions[state.idx];
+  qText.textContent = q.q;
+  opts.innerHTML = "";
+  q.choices.forEach((c,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.setAttribute('role','button');
+    btn.setAttribute('tabindex','0');
+    btn.innerText = String.fromCharCode(65+i)+'. '+c;
+    if(state.answers[state.idx] === i) btn.classList.add('selected');
+    btn.addEventListener('click', ()=> {
+      state.answers[state.idx] = i;
+      saveState();
+      render();
+    });
+    opts.appendChild(btn);
+  });
+  qIndex.textContent = `Question ${state.idx+1} / ${state.quiz.questions.length}`;
+  prog.style.width = `${(state.idx+1)/state.quiz.questions.length*100}%`;
+  result.innerHTML = "";
+  // Next/Prev buttons
+  prevBtn.disabled = state.idx === 0;
+  nextBtn.textContent = state.idx === state.quiz.questions.length-1 ? 'Submit' : 'Next';
+}
+
+/* ========== Navigation ========== */
+prevBtn.addEventListener('click', ()=> {
+  if(state.idx>0){ state.idx--; render(); }
+});
+nextBtn.addEventListener('click', ()=> {
+  if(state.idx < state.quiz.questions.length-1){
+    state.idx++; render();
+  } else {
+    submitQuiz();
+  }
+});
+
+/* ========== Submit & Scoring ========== */
+function submitQuiz(){
+  // compute score
+  const qs = state.quiz.questions;
+  let correct=0, attempted=0;
+  qs.forEach((q,i)=>{
+    const ans = state.answers[i];
+    if(typeof ans === 'number') attempted++;
+    if(ans === q.answer) correct++;
+  });
+  const total = qs.length;
+  const percent = Math.round(correct/total*100);
+  result.innerHTML = `
+    <div class="card" style="margin-top:12px;padding:12px;">
+      <div style="font-weight:700">Score: ${correct} / ${total} (${percent}%)</div>
+      <div class="small" style="margin-top:8px">Attempted: ${attempted}</div>
+      <div style="margin-top:10px">
+        <button id="reviewBtn" class="ghost">Review Answers</button>
+        <button id="clearBtn">Restart Quiz</button>
+      </div>
+      <div style="margin-top:12px" id="explainArea"></div>
+    </div>`;
+  document.getElementById('reviewBtn').addEventListener('click', showReview);
+  document.getElementById('clearBtn').addEventListener('click', ()=> {
+    if(confirm('Clear all saved answers and restart?')) {
+      state.answers = [];
+      localStorage.removeItem('quiz_answers_'+state.quiz.id);
+      localStorage.removeItem('quiz_start_'+state.quiz.id);
+      state.startAt = null;
+      render();
+      result.innerHTML = '';
+    }
+  });
+  // stop timer
+  stopTimer();
+}
+
+/* ========== Review Mode ========== */
+function showReview(){
+  const explainArea = document.getElementById('explainArea');
+  explainArea.innerHTML = '';
+  state.quiz.questions.forEach((q,i)=>{
+    const div = document.createElement('div');
+    div.style.padding='8px';
+    div.style.borderBottom='1px solid #f1f3f8';
+    const user = (state.answers[i] === undefined) ? 'Not answered' : String.fromCharCode(65+state.answers[i]) + '. ' + q.choices[state.answers[i]];
+    const correct = String.fromCharCode(65+q.answer) + '. ' + q.choices[q.answer];
+    div.innerHTML = `<div style="font-weight:600">${i+1}. ${q.q}</div>
+      <div class="small">Your answer: ${user}</div>
+      <div class="small">Correct: ${correct}</div>
+      ${q.explain? `<div class="small" style="margin-top:6px;color:#333">Explain: ${q.explain}</div>` : ''}`;
+    explainArea.appendChild(div);
+  });
+}
+
+/* ========== Timer ========== */
+function startTimer(){
+  if(!state.timeLeft) { timerEl.textContent = 'No timer'; return; }
+  if(!state.startAt){ state.startAt = Date.now(); localStorage.setItem('quiz_start_'+state.quiz.id, state.startAt); }
+  const end = Number(state.startAt) + state.quiz.timeLimitSec*1000;
+  function tick(){
+    const rem = Math.max(0, Math.floor((end - Date.now())/1000));
+    const mm = String(Math.floor(rem/60)).padStart(2,'0');
+    const ss = String(rem%60).padStart(2,'0');
+    timerEl.textContent = `Time: ${mm}:${ss}`;
+    if(rem<=0){ clearInterval(state.timerId); timerEl.textContent='Time up'; alert('Time is up — quiz will be submitted'); submitQuiz(); }
+  }
+  tick();
+  state.timerId = setInterval(tick,1000);
+}
+function stopTimer(){ if(state.timerId) clearInterval(state.timerId); state.timerId=null; }
+
+/* ========== Init ========== */
+function init(){
+  document.title = state.quiz.title + ' — Quiz';
+  if(!Array.isArray(state.answers)) state.answers = [];
+  // ensure answers array length equals questions length
+  if(state.answers.length < state.quiz.questions.length) {
+    for(let i=state.answers.length;i<state.quiz.questions.length;i++) state.answers[i]= undefined;
+  }
+  render();
+  // keyboard navigation
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'ArrowRight') nextBtn.click();
+    if(e.key === 'ArrowLeft') prevBtn.click();
+    if(e.key >= '1' && e.key <= '9'){
+      const idx = Number(e.key)-1;
+      const q = state.quiz.questions[state.idx];
+      if(q && q.choices[idx] !== undefined){
+        state.answers[state.idx] = idx;
+        saveState();
+        render();
+      }
+    }
+  });
+  // Start timer if set
+  if(state.quiz.timeLimitSec) startTimer();
+}
+init();
+</script>
+</body>
+</html>
